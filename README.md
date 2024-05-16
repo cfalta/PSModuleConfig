@@ -45,7 +45,7 @@ Set-PSModuleConfig -Name MyModule -Data @{"URI"="https://myapi.com"; "OtherParam
 Enable-PSModuleConfigEncryption -Name MyModule
 ```
 
-This will use ConvertFrom-SecureString with default to protect the configuration items using DPAPI. The known limitations of SecureString in Memory apply. See Microsofts [documentation](https://learn.microsoft.com/en-us/dotnet/fundamentals/runtime-libraries/system-security-securestring) for more details.
+This will use ConvertFrom-SecureString with default settings to protect the configuration items (DPAPI on Windows). The known limitations of SecureString in memory apply. See Microsofts [documentation](https://learn.microsoft.com/en-us/dotnet/fundamentals/runtime-libraries/system-security-securestring) for more details.
 
 Disable like this.
 
@@ -53,7 +53,7 @@ Disable like this.
 Disable-PSModuleConfigEncryption -Name MyModule
 ```
 
-You can also protect an new configuration right from the start using the `New-PSModuleConfig` command with the `-Encrypt` flag.
+You can also protect a new configuration right from the start using the `New-PSModuleConfig` command with the `-Encrypt` flag.
 
 ```
 New-PSModuleConfig -Name MyModule -Data @{"URI"="https://myapi.com"; "OtherParam"="SomedataHere"} -Encrypt
