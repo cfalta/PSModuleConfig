@@ -2,11 +2,19 @@ Set-StrictMode -Version 1.0
 
 function Get-PSModuleConfigDefaults
 {
-    $Defaults = [PSCustomObject]@{
-        version = "1.0.0"
-        defaultconfigfolder = (Join-Path -Path $env:USERPROFILE -ChildPath "PSModuleConfig")
+    
+    if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
+    {
+        $Defaults = New-Object -TypeName psobject
+        $Defaults | Add-Member -MemberType NoteProperty -Name version -Value "1.0.0"
+        $Defaults | Add-Member -MemberType NoteProperty -Name defaultconfigfolder -Value (Join-Path -Path $env:USERPROFILE -ChildPath "PSModuleConfig")    
     }
-
+    else {
+        $Defaults = [PSCustomObject]@{
+            version = "1.0.0"
+            defaultconfigfolder = (Join-Path -Path $env:USERPROFILE -ChildPath "PSModuleConfig")
+        }
+    }
     return $Defaults
 }
 
@@ -68,12 +76,23 @@ function New-PSModuleConfig
     
     #Create PSCustomObject called $NewConfig        
     #Add the default psmoduleconfig params like encrypt under a node called psmoduleconfig
-    $NewConfig = [PSCustomObject]@{
-        psmoduleconfig = @{
-            version = $PSModuleConfigVersion
-            encrypt = $UseEncryption
+    if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
+    {
+        $NewConfig = New-Object -TypeName psobject
+        $PSModuleConfigObject = New-Object -TypeName psobject
+        $PSModuleConfigObject | Add-Member -MemberType NoteProperty -Name version -Value $PSModuleConfigVersion
+        $PSModuleConfigObject | Add-Member -MemberType NoteProperty -Name encrypt -Value $UseEncryption
+        $NewConfig | Add-Member -MemberType NoteProperty -Name psmoduleconfig -Value $PSModuleConfigObject
+    }
+    else {
+        $NewConfig = [PSCustomObject]@{
+            psmoduleconfig = @{
+                version = $PSModuleConfigVersion
+                encrypt = $UseEncryption
+            }
         }
     }
+
 
     #Convert PSCustomobject to json
     $NewConfigJson = $NewConfig | ConvertTo-Json
@@ -197,10 +216,19 @@ function Set-PSModuleConfig
     }
 
     #Create a new PSCustomObject with metadata and the new config
-    $FinalConfig = [PSCustomObject]@{
-        psmoduleconfig = $OldConfig.psmoduleconfig
-        $Name = $NewConfigSorted
-        }
+    if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
+    {
+        $FinalConfig  = New-Object -TypeName psobject
+        $FinalConfig  | Add-Member -MemberType NoteProperty -Name psmoduleconfig -Value $OldConfig.psmoduleconfig
+        $FinalConfig  | Add-Member -MemberType NoteProperty -Name $Name -Value $NewConfigSorted
+    }
+    else {
+        $FinalConfig = [PSCustomObject]@{
+            psmoduleconfig = $OldConfig.psmoduleconfig
+            $Name = $NewConfigSorted
+            }
+    }
+
     
 
     #convert $newconfig back to json and write to config file
@@ -257,8 +285,16 @@ function Enable-PSModuleConfigEncryption
         #Set the encrypt flag to true
         $OldConfig.psmoduleconfig.encrypt = $true
         
-        #encrypt the data
-        $NewConfigCrypt = $OldConfig.psobject.copy()
+        #encrypt the data. using convertto-json workaround if constrained language mode is enabled since .copy() is not available in that case
+        if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
+        {
+            $NewConfigCrypt = ($OldConfig | convertto-json -Depth 100) | convertfrom-json
+        }
+        else {
+            $NewConfigCrypt = $OldConfig.psobject.copy()
+        }
+    
+
         foreach ($SingleKey in $OldConfig.$Name.psobject.properties.name)
         {
             $NewConfigCrypt.$Name.$SingleKey = (ConvertTo-SecureString -String $NewConfigCrypt.$Name.$SingleKey -AsPlainText -Force | ConvertFrom-SecureString)
@@ -355,7 +391,14 @@ function Read-PSModuleConfig
     
     if($Config)
     {
-        $ConfigData = $Config.$Name.psobject.Copy()
+        #using convertto-json workaround if constrained language mode is enabled since .copy() is not available in that case
+        if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
+        {
+            $ConfigData = ($Config.$Name | convertto-json -Depth 100) | convertfrom-json
+        }
+        else {
+            $ConfigData = $Config.$Name.psobject.Copy()
+        }
 
         #Check if encryption is set to true, if yes iterate through the keys and decrypt the values
         if($Config.psmoduleconfig.encrypt -eq $true)
