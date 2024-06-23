@@ -2,17 +2,26 @@ Set-StrictMode -Version 1.0
 
 function Get-PSModuleConfigDefaults
 {
-    
+    #Default for Windows OS
+    $BasePath = $env:USERPROFILE 
+
+    #Set BasePath to $Home since $env is not available on macOS
+    if($PSVersionTable.OS -like "*Darwin*")
+    {
+        $BasePath = $Home 
+    }
+
+    #Not necessary at this stage but we keep it here in case we want to further distinguish betweend language modes in the future
     if($ExecutionContext.SessionState.LanguageMode -eq "ConstrainedLanguage")
     {
         $Defaults = New-Object -TypeName psobject
         $Defaults | Add-Member -MemberType NoteProperty -Name version -Value "1.0.0"
-        $Defaults | Add-Member -MemberType NoteProperty -Name defaultconfigfolder -Value (Join-Path -Path $env:USERPROFILE -ChildPath "PSModuleConfig")    
+        $Defaults | Add-Member -MemberType NoteProperty -Name defaultconfigfolder -Value (Join-Path -Path $BasePath -ChildPath "PSModuleConfig")    
     }
     else {
         $Defaults = [PSCustomObject]@{
             version = "1.0.0"
-            defaultconfigfolder = (Join-Path -Path $env:USERPROFILE -ChildPath "PSModuleConfig")
+            defaultconfigfolder = (Join-Path -Path $BasePath -ChildPath "PSModuleConfig")
         }
     }
     return $Defaults
